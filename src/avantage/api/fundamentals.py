@@ -307,6 +307,7 @@ class FundamentalsAPI:
             )
         data = await self._request("EARNINGS_CALENDAR", symbol=symbol, horizon=horizon)
         return data if isinstance(data, list) else []
+
     async def ipo_calendar(self) -> list[dict[str, str]]:
         """Fetch upcoming IPO events.
 
