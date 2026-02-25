@@ -20,10 +20,12 @@ def clean_key(key: str) -> str:
     return _PREFIX_RE.sub("", key).strip()
 
 
-def parse_float(value: str | None) -> float | None:
-    """Safely parse a string to float, returning None for missing/invalid values."""
+def parse_float(value: str | float | int | None) -> float | None:
+    """Safely parse a value to float, returning None for missing/invalid values."""
     if value is None:
         return None
+    if isinstance(value, (int, float)):
+        return float(value)
     value = value.strip()
     if value in ("", "None", "-", "."):
         return None
@@ -33,7 +35,7 @@ def parse_float(value: str | None) -> float | None:
         return None
 
 
-def parse_int(value: str | None) -> int | None:
+def parse_int(value: str | float | int | None) -> int | None:
     """Safely parse a string to int, returning None for missing/invalid values."""
     f = parse_float(value)
     if f is None:

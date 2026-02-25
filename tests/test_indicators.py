@@ -79,6 +79,28 @@ async def test_sma_metadata_parsed(mock_request):
     assert result.metadata["Interval"] == "daily"
 
 
+async def test_metadata_int_values_coerced_to_str(mock_request):
+    """API sometimes returns integer values in metadata (e.g. Time Period: 14)."""
+    mock_request.return_value = {
+        "Meta Data": {
+            "1. Symbol": "AAPL",
+            "2. Indicator": "Relative Strength Index (RSI)",
+            "3. Last Refreshed": "2024-01-02",
+            "4. Interval": "daily",
+            "5. Time Period": 14,
+            "6. Series Type": "close",
+        },
+        "Technical Analysis: RSI": {
+            "2024-01-02": {"RSI": "65.42"},
+        },
+    }
+    api = IndicatorsAPI(mock_request)
+    result = await api.rsi("AAPL", "daily", 14, "close")
+
+    assert result.metadata["Time Period"] == "14"
+    assert isinstance(result.metadata["Time Period"], str)
+
+
 async def test_ema(mock_request):
     mock_data = {
         "Meta Data": {"1. Symbol": "AAPL"},

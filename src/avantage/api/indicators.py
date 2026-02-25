@@ -40,7 +40,7 @@ class IndicatorsAPI:
         metadata_key = next((k for k in data if "Meta Data" in k), None)
         metadata: dict[str, str] = {}
         if metadata_key:
-            metadata = {clean_key(k): v for k, v in data[metadata_key].items()}
+            metadata = {clean_key(k): str(v) for k, v in data[metadata_key].items()}
 
         # Find the "Technical Analysis: ..." key.
         analysis_key = next(

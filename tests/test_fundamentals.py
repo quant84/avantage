@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 from avantage.api.fundamentals import FundamentalsAPI
 from avantage.models.fundamentals import (
     CompanyOverview,
@@ -240,8 +242,8 @@ async def test_splits(mock_request):
 
 
 async def test_listing_status(mock_request):
-    mock_request.return_value = {
-        "data": [
+    mock_csv = AsyncMock(
+        return_value=[
             {
                 "symbol": "AAPL",
                 "name": "Apple Inc",
@@ -252,8 +254,8 @@ async def test_listing_status(mock_request):
                 "status": "Active",
             }
         ]
-    }
-    api = FundamentalsAPI(mock_request)
+    )
+    api = FundamentalsAPI(mock_request, request_csv=mock_csv)
     result = await api.listing_status()
 
     assert isinstance(result, list)
@@ -264,37 +266,37 @@ async def test_listing_status(mock_request):
     assert entry.name == "Apple Inc"
     assert entry.exchange == "NASDAQ"
     assert entry.status == "Active"
-    mock_request.assert_called_once_with("LISTING_STATUS", state="active", date=None)
+    mock_csv.assert_called_once_with("LISTING_STATUS", state="active", date=None)
 
 
 async def test_earnings_calendar(mock_request):
-    mock_request.return_value = {
-        "data": [
+    mock_csv = AsyncMock(
+        return_value=[
             {
                 "symbol": "AAPL",
                 "reportDate": "2024-01-25",
                 "fiscalDateEnding": "2024-12-31",
             }
         ]
-    }
-    api = FundamentalsAPI(mock_request)
+    )
+    api = FundamentalsAPI(mock_request, request_csv=mock_csv)
     result = await api.earnings_calendar()
 
     assert isinstance(result, list)
     assert len(result) == 1
     assert result[0]["symbol"] == "AAPL"
     assert result[0]["reportDate"] == "2024-01-25"
-    mock_request.assert_called_once_with("EARNINGS_CALENDAR", symbol=None, horizon="3month")
+    mock_csv.assert_called_once_with("EARNINGS_CALENDAR", symbol=None, horizon="3month")
 
 
 async def test_ipo_calendar(mock_request):
-    mock_request.return_value = {
-        "data": [{"symbol": "NEWCO", "name": "New Company Inc", "ipoDate": "2024-03-15"}]
-    }
-    api = FundamentalsAPI(mock_request)
+    mock_csv = AsyncMock(
+        return_value=[{"symbol": "NEWCO", "name": "New Company Inc", "ipoDate": "2024-03-15"}]
+    )
+    api = FundamentalsAPI(mock_request, request_csv=mock_csv)
     result = await api.ipo_calendar()
 
     assert isinstance(result, list)
     assert len(result) == 1
     assert result[0]["symbol"] == "NEWCO"
-    mock_request.assert_called_once_with("IPO_CALENDAR")
+    mock_csv.assert_called_once_with("IPO_CALENDAR")

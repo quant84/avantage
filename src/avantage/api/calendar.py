@@ -11,27 +11,20 @@ if TYPE_CHECKING:
 class CalendarAPI:
     """Access earnings calendar and IPO calendar endpoints."""
 
-    def __init__(self, request: Callable[..., Awaitable[dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        request: Callable[..., Awaitable[dict[str, Any]]],
+        request_csv: Callable[..., Awaitable[list[dict[str, str]]]] | None = None,
+    ) -> None:
         self._request = request
-
-    @staticmethod
-    def _extract_list(data: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
-        """Extract a list of entries from the raw API response."""
-        if isinstance(data, dict):
-            entries = data.get("data")
-            if isinstance(entries, list):
-                return entries
-            return [data] if data else []
-        if isinstance(data, list):
-            return data
-        return []
+        self._request_csv = request_csv
 
     async def earnings(
         self,
         *,
         symbol: str | None = None,
         horizon: str = "3month",
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, str]]:
         """Fetch upcoming earnings announcements.
 
         Args:
@@ -39,16 +32,23 @@ class CalendarAPI:
             horizon: ``"3month"``, ``"6month"``, or ``"12month"``.
 
         Returns:
-            List of earnings calendar entries.
+            List of earnings calendar entries (CSV-parsed dicts).
         """
+        if self._request_csv is not None:
+            return await self._request_csv(
+                "EARNINGS_CALENDAR",
+                symbol=symbol,
+                horizon=horizon,
+            )
         data = await self._request("EARNINGS_CALENDAR", symbol=symbol, horizon=horizon)
-        return self._extract_list(data)
-
-    async def ipo(self) -> list[dict[str, Any]]:
+        return data if isinstance(data, list) else []
+    async def ipo(self) -> list[dict[str, str]]:
         """Fetch upcoming IPO events.
 
         Returns:
-            List of IPO calendar entries.
+            List of IPO calendar entries (CSV-parsed dicts).
         """
+        if self._request_csv is not None:
+            return await self._request_csv("IPO_CALENDAR")
         data = await self._request("IPO_CALENDAR")
-        return self._extract_list(data)
+        return data if isinstance(data, list) else []
