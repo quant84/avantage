@@ -93,7 +93,7 @@ async def main():
 asyncio.run(main())
 ```
 
-![IBM Intraday](images/intraday.png)
+![IBM Intraday](https://raw.githubusercontent.com/quant84/avantage/main/images/intraday.png)
 
 ### Bollinger Bands
 
@@ -127,7 +127,7 @@ async def main():
 asyncio.run(main())
 ```
 
-![IBM Bollinger Bands](images/bollinger_bands.png)
+![IBM Bollinger Bands](https://raw.githubusercontent.com/quant84/avantage/main/images/bollinger_bands.png)
 
 ### Crypto Daily
 
@@ -150,7 +150,7 @@ async def main():
 asyncio.run(main())
 ```
 
-![BTC/USD Daily](images/crypto_daily.png)
+![BTC/USD Daily](https://raw.githubusercontent.com/quant84/avantage/main/images/crypto_daily.png)
 
 ## API Reference
 
