@@ -24,8 +24,13 @@ if TYPE_CHECKING:
 class FundamentalsAPI:
     """Access fundamental data: financials, earnings, dividends, splits, and listings."""
 
-    def __init__(self, request: Callable[..., Awaitable[dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        request: Callable[..., Awaitable[dict[str, Any]]],
+        request_csv: Callable[..., Awaitable[list[dict[str, str]]]] | None = None,
+    ) -> None:
         self._request = request
+        self._request_csv = request_csv
 
     # -- Private helpers ------------------------------------------------------
 
@@ -248,56 +253,67 @@ class FundamentalsAPI:
     ) -> list[ListingEntry]:
         """Fetch active or delisted ticker listings.
 
+        This endpoint always returns CSV from the upstream API.
+
         Args:
             state: ``"active"`` or ``"delisted"``.
             date: Optional date in ``YYYY-MM-DD`` format.
         """
-        data = await self._request("LISTING_STATUS", state=state, date=date)
-        raw_list = data.get("data", data) if isinstance(data, dict) else data
-        entries: list[ListingEntry] = []
-        if isinstance(raw_list, list):
-            for item in raw_list:
-                entries.append(
-                    ListingEntry(
-                        symbol=item.get("symbol", ""),
-                        name=item.get("name"),
-                        exchange=item.get("exchange"),
-                        asset_type=item.get("assetType"),
-                        ipo_date=item.get("ipoDate"),
-                        delisting_date=item.get("delistingDate"),
-                        status=item.get("status"),
-                    )
-                )
-        return entries
+        if self._request_csv is not None:
+            rows = await self._request_csv("LISTING_STATUS", state=state, date=date)
+        else:
+            data = await self._request("LISTING_STATUS", state=state, date=date)
+            if isinstance(data, dict):
+                rows = data.get("data", [])
+            elif isinstance(data, list):
+                rows = data
+            else:
+                rows = []
 
-    @staticmethod
-    def _extract_list(data: dict[str, Any] | list[Any]) -> list[dict[str, Any]]:
-        """Extract a list of entries from a raw calendar response."""
-        if isinstance(data, dict):
-            entries = data.get("data")
-            if isinstance(entries, list):
-                return entries
-            return [data] if data else []
-        if isinstance(data, list):
-            return data
-        return []
+        entries: list[ListingEntry] = []
+        for item in rows:
+            entries.append(
+                ListingEntry(
+                    symbol=item.get("symbol", ""),
+                    name=item.get("name"),
+                    exchange=item.get("exchange"),
+                    asset_type=item.get("assetType"),
+                    ipo_date=item.get("ipoDate"),
+                    delisting_date=item.get("delistingDate"),
+                    status=item.get("status"),
+                )
+            )
+        return entries
 
     async def earnings_calendar(
         self,
         *,
         symbol: str | None = None,
         horizon: str = "3month",
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, str]]:
         """Fetch upcoming earnings announcements.
+
+        This endpoint always returns CSV from the upstream API.
 
         Args:
             symbol: Optional ticker to filter by.
             horizon: ``"3month"``, ``"6month"``, or ``"12month"``.
         """
+        if self._request_csv is not None:
+            return await self._request_csv(
+                "EARNINGS_CALENDAR",
+                symbol=symbol,
+                horizon=horizon,
+            )
         data = await self._request("EARNINGS_CALENDAR", symbol=symbol, horizon=horizon)
-        return self._extract_list(data)
+        return data if isinstance(data, list) else []
 
-    async def ipo_calendar(self) -> list[dict[str, Any]]:
-        """Fetch upcoming IPO events."""
+    async def ipo_calendar(self) -> list[dict[str, str]]:
+        """Fetch upcoming IPO events.
+
+        This endpoint always returns CSV from the upstream API.
+        """
+        if self._request_csv is not None:
+            return await self._request_csv("IPO_CALENDAR")
         data = await self._request("IPO_CALENDAR")
-        return self._extract_list(data)
+        return data if isinstance(data, list) else []

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import logging
 import random
 from typing import Any
@@ -162,6 +164,78 @@ class AlphaVantageClient:
             f"Request failed after {self._config.max_retries} attempts",
         )
 
+    async def _request_csv(self, function: str, **params: Any) -> list[dict[str, str]]:
+        """Send a request expecting a CSV response and return parsed rows.
+
+        Some Alpha Vantage endpoints (LISTING_STATUS, EARNINGS_CALENDAR,
+        IPO_CALENDAR) always return CSV regardless of the ``datatype`` parameter.
+
+        Returns:
+            A list of dictionaries, one per CSV row, keyed by header names.
+        """
+        query: dict[str, Any] = {
+            "function": function,
+            "apikey": self._config.api_key,
+            **{k: v for k, v in params.items() if v is not None},
+        }
+
+        last_exc: Exception | None = None
+
+        for attempt in range(1, self._config.max_retries + 1):
+            await self._rate_limiter.acquire()
+
+            try:
+                resp = await self._http.get(self._config.base_url, params=query)
+            except (httpx.ConnectError, httpx.TimeoutException) as exc:
+                last_exc = exc
+                logger.warning(
+                    "CSV request attempt %d/%d failed: %s",
+                    attempt,
+                    self._config.max_retries,
+                    exc,
+                )
+                if attempt < self._config.max_retries:
+                    await self._backoff(attempt)
+                    continue
+                raise UpstreamError(
+                    f"Connection failed after {self._config.max_retries} attempts: {exc}",
+                ) from exc
+
+            if resp.status_code in _RETRYABLE_STATUS_CODES:
+                last_exc = UpstreamError(
+                    f"HTTP {resp.status_code}",
+                    response_data={"status_code": resp.status_code},
+                )
+                if attempt < self._config.max_retries:
+                    await self._backoff(attempt)
+                    continue
+                raise last_exc
+
+            if resp.status_code != 200:
+                raise UpstreamError(
+                    f"HTTP {resp.status_code}",
+                    response_data={"status_code": resp.status_code},
+                )
+
+            text = resp.text
+            if not text.strip():
+                return []
+
+            # Check for JSON error responses embedded in the CSV body.
+            if text.strip().startswith("{"):
+                try:
+                    data: dict[str, Any] = resp.json()
+                    self._check_response_errors(data)
+                except (ValueError, TypeError):
+                    pass
+
+            reader = csv.DictReader(io.StringIO(text))
+            return list(reader)
+
+        raise UpstreamError(  # pragma: no cover
+            f"Request failed after {self._config.max_retries} attempts",
+        )
+
     def _check_response_errors(self, data: dict[str, Any]) -> None:
         """Inspect a parsed response for embedded error signals."""
         error_msg = data.get("Error Message")
@@ -235,7 +309,7 @@ class AlphaVantageClient:
         if self._fundamentals is None:
             from avantage.api.fundamentals import FundamentalsAPI  # wired in Phase 2
 
-            self._fundamentals = FundamentalsAPI(self._request)
+            self._fundamentals = FundamentalsAPI(self._request, self._request_csv)
         return self._fundamentals
 
     @property
@@ -289,5 +363,5 @@ class AlphaVantageClient:
         if self._calendar is None:
             from avantage.api.calendar import CalendarAPI  # wired in Phase 2
 
-            self._calendar = CalendarAPI(self._request)
+            self._calendar = CalendarAPI(self._request, self._request_csv)
         return self._calendar
