@@ -251,6 +251,10 @@ except AlphaVantageError as e:
     print(f"API error: {e.message}")
 ```
 
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
 ## Requirements
 
 - Python 3.11+
