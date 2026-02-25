@@ -59,6 +59,99 @@ os.environ["ALPHAVANTAGE_API_KEY"] = "YOUR_KEY"
 client = AlphaVantageClient(os.environ["ALPHAVANTAGE_API_KEY"])
 ```
 
+## Plotting
+
+Responses are Pydantic models, so you'll need to convert them to pandas DataFrames for plotting. Install the extras:
+
+```bash
+pip install avantage[pandas] matplotlib
+```
+
+### Intraday Time Series
+
+```python
+import asyncio
+import pandas as pd
+import matplotlib.pyplot as plt
+from avantage import AlphaVantageClient
+
+async def main():
+    async with AlphaVantageClient("YOUR_API_KEY") as client:
+        series = await client.equity.intraday("IBM", "5min")
+
+    df = pd.DataFrame([
+        {"time": e.timestamp, "close": e.close} for e in series.data
+    ])
+    df["time"] = pd.to_datetime(df["time"])
+    df = df.sort_values("time")
+
+    df.plot(x="time", y="close", title="IBM Intraday Close Price (5-min)", legend=False)
+    plt.ylabel("Price (USD)")
+    plt.tight_layout()
+    plt.show()
+
+asyncio.run(main())
+```
+
+![IBM Intraday](images/intraday.png)
+
+### Bollinger Bands
+
+```python
+async def main():
+    async with AlphaVantageClient("YOUR_API_KEY") as client:
+        bbands = await client.indicators.bbands("IBM", "daily", time_period=20, series_type="close")
+
+    df = pd.DataFrame([
+        {
+            "date": e.timestamp,
+            "upper": e.values["Real Upper Band"],
+            "middle": e.values["Real Middle Band"],
+            "lower": e.values["Real Lower Band"],
+        }
+        for e in bbands.data
+    ])
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date").tail(90)
+
+    fig, ax = plt.subplots()
+    ax.plot(df["date"], df["upper"], label="Upper Band")
+    ax.plot(df["date"], df["middle"], label="Middle Band (SMA 20)")
+    ax.plot(df["date"], df["lower"], label="Lower Band")
+    ax.fill_between(df["date"], df["upper"], df["lower"], alpha=0.1)
+    ax.set_title("IBM Bollinger Bands (Daily)")
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+asyncio.run(main())
+```
+
+![IBM Bollinger Bands](images/bollinger_bands.png)
+
+### Crypto Daily
+
+```python
+async def main():
+    async with AlphaVantageClient("YOUR_API_KEY") as client:
+        crypto = await client.crypto.daily("BTC", "USD")
+
+    df = pd.DataFrame([
+        {"date": e.timestamp, "close": e.close} for e in crypto.data
+    ])
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.sort_values("date").tail(90)
+
+    df.plot(x="date", y="close", title="Bitcoin Daily Close Price (BTC/USD)", legend=False)
+    plt.ylabel("Price (USD)")
+    plt.tight_layout()
+    plt.show()
+
+asyncio.run(main())
+```
+
+![BTC/USD Daily](images/crypto_daily.png)
+
 ## API Reference
 
 The client exposes domain-specific API groups as attributes:
