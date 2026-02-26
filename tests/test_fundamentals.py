@@ -11,6 +11,7 @@ from avantage.models.fundamentals import (
     EarningsEntry,
     EarningsResponse,
     FinancialResponse,
+    InsiderTransaction,
     ListingEntry,
     SplitEntry,
 )
@@ -84,6 +85,31 @@ MOCK_DIVIDENDS = {
 }
 
 MOCK_SPLITS = {"data": [{"effective_date": "2020-08-31", "split_ratio": "4:1"}]}
+
+MOCK_INSIDER_TRANSACTIONS = {
+    "data": [
+        {
+            "transaction_date": "2026-02-18",
+            "ticker": "IBM",
+            "executive": "KRISHNA, ARVIND",
+            "executive_title": "Director, Chairman, President & CEO",
+            "security_type": "Common Stock",
+            "acquisition_or_disposal": "A",
+            "shares": "5664.0",
+            "share_price": "0.0",
+        },
+        {
+            "transaction_date": "2026-02-18",
+            "ticker": "IBM",
+            "executive": "KRISHNA, ARVIND",
+            "executive_title": "Director, Chairman, President & CEO",
+            "security_type": "Common Stock",
+            "acquisition_or_disposal": "D",
+            "shares": "2839.0",
+            "share_price": "258.68",
+        },
+    ]
+}
 
 
 async def test_overview(mock_request):
@@ -239,6 +265,31 @@ async def test_splits(mock_request):
     assert entry.effective_date == "2020-08-31"
     assert entry.split_ratio == "4:1"
     mock_request.assert_called_once_with("SPLITS", symbol="AAPL")
+
+
+async def test_insider_transactions(mock_request):
+    mock_request.return_value = MOCK_INSIDER_TRANSACTIONS
+    api = FundamentalsAPI(mock_request)
+    result = await api.insider_transactions("IBM")
+
+    assert isinstance(result, list)
+    assert len(result) == 2
+    entry = result[0]
+    assert isinstance(entry, InsiderTransaction)
+    assert entry.transaction_date == "2026-02-18"
+    assert entry.ticker == "IBM"
+    assert entry.executive == "KRISHNA, ARVIND"
+    assert entry.executive_title == "Director, Chairman, President & CEO"
+    assert entry.security_type == "Common Stock"
+    assert entry.acquisition_or_disposal == "A"
+    assert entry.shares == 5664.0
+    assert entry.share_price == 0.0
+
+    disposal = result[1]
+    assert disposal.acquisition_or_disposal == "D"
+    assert disposal.shares == 2839.0
+    assert disposal.share_price == 258.68
+    mock_request.assert_called_once_with("INSIDER_TRANSACTIONS", symbol="IBM")
 
 
 async def test_listing_status(mock_request):

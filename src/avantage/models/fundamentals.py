@@ -112,6 +112,19 @@ class ETFProfile(BaseModel):
     holdings: list[dict[str, Any]] = []
 
 
+class InsiderTransaction(BaseModel):
+    """Single insider transaction record."""
+
+    transaction_date: str
+    ticker: str
+    executive: str | None = None
+    executive_title: str | None = None
+    security_type: str | None = None
+    acquisition_or_disposal: str | None = None
+    shares: float | None = None
+    share_price: float | None = None
+
+
 class ListingEntry(BaseModel):
     """Active or delisted stock/ETF."""
 
