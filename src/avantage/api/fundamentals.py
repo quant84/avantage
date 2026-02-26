@@ -13,6 +13,7 @@ from avantage.models.fundamentals import (
     ETFProfile,
     FinancialReport,
     FinancialResponse,
+    InsiderTransaction,
     ListingEntry,
     SplitEntry,
 )
@@ -241,6 +242,29 @@ class FundamentalsAPI:
                 SplitEntry(
                     effective_date=item.get("effective_date", ""),
                     split_ratio=item.get("split_ratio", ""),
+                )
+            )
+        return entries
+
+    async def insider_transactions(self, symbol: str) -> list[InsiderTransaction]:
+        """Fetch insider transactions by key stakeholders.
+
+        Args:
+            symbol: Ticker symbol (e.g. ``"IBM"``).
+        """
+        data = await self._request("INSIDER_TRANSACTIONS", symbol=symbol)
+        entries: list[InsiderTransaction] = []
+        for item in data.get("data", []):
+            entries.append(
+                InsiderTransaction(
+                    transaction_date=item.get("transaction_date", ""),
+                    ticker=item.get("ticker", symbol),
+                    executive=item.get("executive"),
+                    executive_title=item.get("executive_title"),
+                    security_type=item.get("security_type"),
+                    acquisition_or_disposal=item.get("acquisition_or_disposal"),
+                    shares=parse_float(item.get("shares")),
+                    share_price=parse_float(item.get("share_price")),
                 )
             )
         return entries
