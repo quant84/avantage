@@ -116,6 +116,33 @@ _BULK_RESPONSE = {
     ]
 }
 
+_BULK_RESPONSE_REALTIME = {
+    "data": [
+        {
+            "symbol": "AAPL",
+            "open": "150.00",
+            "high": "155.00",
+            "low": "149.00",
+            "close": "154.00",
+            "volume": "1000000",
+            "previous_close": "152.00",
+            "change": "2.00",
+            "change_percent": "1.32%",
+        },
+        {
+            "symbol": "MSFT",
+            "open": "370.00",
+            "high": "375.00",
+            "low": "368.00",
+            "close": "374.00",
+            "volume": "500000",
+            "previous_close": "371.00",
+            "change": "3.00",
+            "change_percent": "0.81%",
+        },
+    ]
+}
+
 _SEARCH_RESPONSE = {
     "bestMatches": [
         {
@@ -280,6 +307,20 @@ async def test_bulk_quotes(mock_request):
     assert isinstance(result, list)
     assert len(result) == 2
     assert all(isinstance(e, BulkQuoteEntry) for e in result)
+    assert result[0].symbol == "AAPL"
+    assert result[0].price == 154.0
+    assert result[1].symbol == "MSFT"
+    assert result[1].price == 374.0
+
+
+async def test_bulk_quotes_realtime_close_field(mock_request):
+    mock_request.return_value = _BULK_RESPONSE_REALTIME
+    api = EquityAPI(mock_request)
+
+    result = await api.bulk_quotes("AAPL,MSFT", entitlement="realtime")
+
+    assert isinstance(result, list)
+    assert len(result) == 2
     assert result[0].symbol == "AAPL"
     assert result[0].price == 154.0
     assert result[1].symbol == "MSFT"
