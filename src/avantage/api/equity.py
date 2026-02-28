@@ -282,7 +282,7 @@ class EquityAPI:
                     open=parse_float(item.get("open")),
                     high=parse_float(item.get("high")),
                     low=parse_float(item.get("low")),
-                    price=parse_float(item.get("price")),
+                    price=parse_float(item.get("price") or item.get("close")),
                     volume=parse_int(item.get("volume")),
                     latest_trading_day=item.get("latest_trading_day"),
                     previous_close=parse_float(item.get("previous_close")),
